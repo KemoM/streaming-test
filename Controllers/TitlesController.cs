@@ -11,81 +11,42 @@ public class TitlesController : ControllerBase
     [Route("/titles")]
     public async Task GetTitles()
     {
-        setupResponse();
-
-        WikiRecord lastRecord = null;
-
-        while (true)
+        await new EventsService(Response).WriteNewEvents(async record =>
         {
-            var records = WikiService.GetNewWikiRecords(lastRecord);
+            await Response.WriteAsync($"type: data\ndata: {record.Title}\n\n");
+        });
+    }
 
-            foreach (WikiRecord record in records)
-            {
-                await Response.WriteAsync($"data: {record.Title}\r\r");
-
-                lastRecord = record;
-            }
-
-            await Task.Delay(100);
-        }
+    [HttpGet(Name = "WikiCurrentTitles")]
+    [Route("/titles/current")]
+    public IEnumerable<string?> GetWikiTitles()
+    {
+        return WikiService.GetNewWikiRecords(null).Where(record => record.Title != null).Select(record => record.Title);
     }
 
     [HttpGet(Name = "WikiTitles")]
     [Route("/titles/{wiki}")]
     public async Task GetWikiTitles(string wiki)
     {
-        setupResponse();
-
-        WikiRecord lastRecord = null;
-
-        while (true)
+        await new EventsService(Response).WriteNewEvents(async record =>
         {
-            var records = WikiService.GetNewWikiRecords(lastRecord);
-
-            foreach (WikiRecord record in records)
+            if (record.Wiki != null && record.Wiki.Equals(wiki))
             {
-                if (record.Wiki.Equals(wiki))
-                {
-                    await Response.WriteAsync($"data: {record.Title}\r\r");
-                }
-
-                lastRecord = record;
+                await Response.WriteAsync($"type: data\ndata: {record.Wiki}\n\n");
             }
-
-            await Task.Delay(100);
-        }
+        });
     }
 
     [HttpGet(Name = "FilterWikiTitles")]
     [Route("/titles/filter/{word}")]
     public async Task GetWikiTitlesFiltered(string word)
     {
-        setupResponse();
-
-        WikiRecord lastRecord = null;
-
-        while (true)
+        await new EventsService(Response).WriteNewEvents(async record =>
         {
-            var records = WikiService.GetNewWikiRecords(lastRecord);
-
-            foreach (WikiRecord record in records)
+            if (record.Title != null && record.Title.IndexOf(word, 0, StringComparison.OrdinalIgnoreCase) != -1)
             {
-                if (record.Title.IndexOf(word, 0, StringComparison.OrdinalIgnoreCase) != -1)
-                {
-                    await Response.WriteAsync($"data: {record.Title}\r\r");
-                }
-
-                lastRecord = record;
+                await Response.WriteAsync($"type: data\ndata: {record.Title}\n\n");
             }
-
-            await Task.Delay(100);
-        }
-    }
-
-    private void setupResponse()
-    {
-        Response.Headers.Add("Cache-Control", "no-cache");
-        Response.Headers.Add("Content-Type", "text/event-stream");
-        Response.Headers.Add("Connection", "keep-alive");
+        });
     }
 }
